@@ -104,8 +104,9 @@
         <p class="text-[11px] text-[var(--ink-dim)] -mt-0.5" id="greeting">Welcome</p>
       </div>
     </div>
-    <button id="profile-shortcut" class="w-9 h-9 rounded-xl glass flex items-center justify-center">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="#F4F1EF" stroke-width="1.6"/><path d="M4.5 20c1.6-3.6 5-5 7.5-5s5.9 1.4 7.5 5" stroke="#F4F1EF" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <button id="profile-shortcut" class="w-9 h-9 rounded-xl glass flex items-center justify-center overflow-hidden">
+      <img id="header-avatar-img" class="w-full h-full object-cover hidden" alt="">
+      <svg id="header-avatar-fallback" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="#F4F1EF" stroke-width="1.6"/><path d="M4.5 20c1.6-3.6 5-5 7.5-5s5.9 1.4 7.5 5" stroke="#F4F1EF" stroke-width="1.6" stroke-linecap="round"/></svg>
     </button>
   </div>
 </header>
@@ -145,7 +146,10 @@
   <section id="view-profile" class="view space-y-4">
     <div class="glass-strong rounded-3xl p-5">
       <div class="flex items-center gap-4">
-        <div class="w-14 h-14 rounded-2xl chili-glow-btn flex items-center justify-center font-display text-lg" id="profile-avatar">?</div>
+        <div class="w-14 h-14 rounded-2xl chili-glow-btn flex items-center justify-center font-display text-lg overflow-hidden flex-shrink-0" id="profile-avatar">
+          <img id="profile-avatar-img" class="w-full h-full object-cover hidden" alt="">
+          <span id="profile-avatar-letter">?</span>
+        </div>
         <div>
           <p class="font-display text-[16px]" id="profile-name">Guest</p>
           <p class="text-[12px] text-[var(--ink-dim)]" id="profile-id">Not connected to Telegram</p>
@@ -248,6 +252,52 @@
     }
     const greetName = tgUser && tgUser.first_name ? tgUser.first_name : "Guest";
     document.getElementById('greeting').textContent = "Welcome, " + greetName;
+
+    applyAvatar(document.getElementById('header-avatar-img'), document.getElementById('header-avatar-fallback'));
+
+    if (s.adZoneId) loadAdSdk(s.adZoneId);
+  }
+
+  /* ---------- Telegram avatar photo ---------- */
+  function applyAvatar(imgEl, fallbackEl){
+    if (!imgEl) return;
+    const photo = tgUser && tgUser.photo_url ? tgUser.photo_url : null;
+    if (photo){
+      imgEl.src = photo;
+      imgEl.onload = ()=>{
+        imgEl.classList.remove('hidden');
+        if (fallbackEl) fallbackEl.classList.add('hidden');
+      };
+      imgEl.onerror = ()=>{
+        imgEl.classList.add('hidden');
+        if (fallbackEl) fallbackEl.classList.remove('hidden');
+      };
+    } else {
+      imgEl.classList.add('hidden');
+      if (fallbackEl) fallbackEl.classList.remove('hidden');
+    }
+  }
+
+  /* ---------- Rewarded ad SDK (Monetag) ---------- */
+  let adSdkZone = null;
+  function loadAdSdk(zoneId){
+    if (adSdkZone === zoneId) return; // already loaded for this zone
+    adSdkZone = zoneId;
+    const existing = document.getElementById('monetag-sdk');
+    if (existing) existing.remove();
+    const s = document.createElement('script');
+    s.id = 'monetag-sdk';
+    s.src = 'https://libtl.com/sdk.js';
+    s.setAttribute('data-zone', zoneId);
+    s.setAttribute('data-sdk', 'show_' + zoneId);
+    document.head.appendChild(s);
+  }
+  function showRewardedAd(zoneId){
+    const fnName = 'show_' + zoneId;
+    if (typeof window[fnName] !== 'function'){
+      return Promise.reject(new Error('Ad SDK not ready yet — try again in a moment.'));
+    }
+    return window[fnName]();
   }
 
   /* ---------- Helpers ---------- */
@@ -347,20 +397,28 @@
     document.getElementById('video-grid').innerHTML = activeVideos().map(v=>videoCard(v,true)).join('');
   }
 
+  function taskTypeIcon(type){
+    if (type === 'ad'){
+      return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4z" stroke="#E8384F" stroke-width="1.7" stroke-linejoin="round"/><path d="M17 9a4 4 0 0 1 0 6" stroke="#E8384F" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+    }
+    return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M21 4 2.5 11l6 2.2M21 4l-3 16-8.5-6.8M21 4 9.5 13.2m0 0L9 19l2-3.6" stroke="#E8384F" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+  }
   function taskCard(t){
     const done = progress.completedTasks.includes(t.id);
+    const type = t.type === 'ad' ? 'ad' : 'channel';
+    const typeLabel = type === 'ad' ? 'Watch ad' : 'Join channel';
     return `
-    <div class="glass rounded-2xl p-3.5 flex items-center gap-3">
+    <div class="glass rounded-2xl p-3.5 flex items-center gap-3" data-task-row="${t.id}">
       <img src="${t.thumbnail}" class="w-12 h-12 rounded-xl object-cover flex-shrink-0" loading="lazy">
       <div class="flex-1 min-w-0">
         <p class="text-[13px] font-medium truncate">${t.title}</p>
-        <p class="text-[11px] text-[var(--ink-dim)]">${done ? 'Completed' : 'Not started'}</p>
+        <p class="text-[11px] text-[var(--ink-dim)] flex items-center gap-1.5">${taskTypeIcon(type)} ${done ? 'Completed' : typeLabel}</p>
       </div>
       ${done
         ? `<span class="w-9 h-9 rounded-xl flex items-center justify-center glass-strong flex-shrink-0">
              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#E8384F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
            </span>`
-        : `<button data-do-task="${t.id}" class="chili-glow-btn text-[11.5px] font-semibold px-3.5 py-2 rounded-xl flex-shrink-0">Start</button>`
+        : `<button data-do-task="${t.id}" class="chili-glow-btn text-[11.5px] font-semibold px-3.5 py-2 rounded-xl flex-shrink-0">${type==='ad'?'Watch':'Join'}</button>`
       }
     </div>`;
   }
@@ -395,7 +453,8 @@
     const name = tgUser ? [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') : 'Guest';
     document.getElementById('profile-name').textContent = name || 'Guest';
     document.getElementById('profile-id').textContent = tgUser ? ('Telegram ID: ' + tgUser.id) : 'Not connected to Telegram';
-    document.getElementById('profile-avatar').textContent = (name||'G').trim().charAt(0).toUpperCase();
+    document.getElementById('profile-avatar-letter').textContent = (name||'G').trim().charAt(0).toUpperCase();
+    applyAvatar(document.getElementById('profile-avatar-img'), document.getElementById('profile-avatar-letter'));
 
     const totalVideos = activeVideos().length;
     const unlockedVideos = activeVideos().filter(isVideoUnlocked).length;
@@ -441,7 +500,7 @@
         <p class="text-[12.5px] text-[var(--ink-dim)] leading-relaxed">${v.description||''}</p>
       </div>
       ${unlocked ? `
-        <a href="${v.downloadUrl}" target="_blank" rel="noopener" class="chili-glow-btn w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-[13.5px]">
+        <a href="${v.downloadUrl || v.videoUrl}" target="_blank" rel="noopener" class="chili-glow-btn w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-[13.5px]">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
           Download video
         </a>
@@ -465,19 +524,41 @@
   }
 
   /* ---------- Task completion ---------- */
-  function doTask(id){
-    const t = activeTasks().find(x=>x.id===id);
-    if(!t) return;
-    if (t.targetUrl){
-      if (tg && tg.openLink) tg.openLink(t.targetUrl);
-      else window.open(t.targetUrl, '_blank');
-    }
+  function markTaskComplete(id, msg){
     if (!progress.completedTasks.includes(id)){
       progress.completedTasks.push(id);
       saveProgress(progress);
     }
     renderAll();
-    toast('Task marked complete');
+    toast(msg || 'Task marked complete');
+  }
+
+  function doTask(id){
+    const t = activeTasks().find(x=>x.id===id);
+    if(!t) return;
+
+    if (t.type === 'ad'){
+      const zone = DATA.settings.adZoneId;
+      if (!zone){ toast('No ad zone configured in admin settings'); return; }
+      const btn = document.querySelector(`[data-do-task="${id}"]`);
+      if (btn){ btn.textContent = 'Loading…'; btn.disabled = true; }
+      showRewardedAd(zone)
+        .then(()=> markTaskComplete(id, 'Ad watched — task complete'))
+        .catch((err)=>{
+          toast(err && err.message ? err.message : 'Ad was closed early — task not completed');
+          if (btn){ btn.textContent = 'Watch'; btn.disabled = false; }
+        });
+      return;
+    }
+
+    // channel-join tasks: open the link, then mark complete.
+    // Note: a static frontend has no way to verify the join actually happened server-side.
+    if (t.targetUrl){
+      if (tg && tg.openTelegramLink && /^https:\/\/t\.me\//.test(t.targetUrl)) tg.openTelegramLink(t.targetUrl);
+      else if (tg && tg.openLink) tg.openLink(t.targetUrl);
+      else window.open(t.targetUrl, '_blank');
+    }
+    markTaskComplete(id, 'Task marked complete');
   }
 
   /* ---------- Nav ---------- */
@@ -528,4 +609,4 @@
 })();
 </script>
 </body>
-      </html>
+  </html>

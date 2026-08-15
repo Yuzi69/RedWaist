@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>RedWaist</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#08090c;
+    --void-2:#0c0d11;
+    --glass:rgba(255,255,255,0.055);
+    --glass-strong:rgba(255,255,255,0.09);
+    --border:rgba(255,255,255,0.09);
+    --chili:#E8384F;
+    --chili-deep:#8C1129;
+    --chili-glow:rgba(232,56,79,0.35);
+    --ink:#F4F1EF;
+    --ink-dim:#9A99A3;
+  }
+  *{-webkit-tap-highlight-color:transparent;}
+  html,body{background:var(--void); color:var(--ink); font-family:'Inter',sans-serif; overscroll-behavior:none;}
+  .font-display{font-family:'Unbounded',sans-serif;}
+  body{
+    background:
+      radial-gradient(120% 60% at 50% -10%, rgba(232,56,79,0.16) 0%, rgba(232,56,79,0) 55%),
+      radial-gradient(90% 50% at 100% 100%, rgba(140,17,41,0.14) 0%, rgba(0,0,0,0) 60%),
+      var(--void);
+    min-height:100vh;
+  }
+  .glass{
+    background:var(--glass);
+    border:1px solid var(--border);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+  }
+  .glass-strong{
+    background:var(--glass-strong);
+    border:1px solid rgba(255,255,255,0.14);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+  }
+  .glow-line{
+    background:linear-gradient(90deg, transparent, var(--chili), transparent);
+    height:1px; opacity:0.7;
+  }
+  .nav-pill{
+    background:rgba(14,15,19,0.55);
+    border:1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(26px) saturate(160%);
+    -webkit-backdrop-filter: blur(26px) saturate(160%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .nav-indicator{
+    transition: transform .45s cubic-bezier(.22,1,.36,1), width .3s ease;
+  }
+  .nav-icon{ transition: color .3s ease, transform .3s ease; }
+  .nav-item.active .nav-icon{ color:#fff; transform:translateY(-1px); }
+  .nav-item:not(.active) .nav-icon{ color:var(--ink-dim); }
+
+  .ring-progress{ transition: stroke-dashoffset .6s cubic-bezier(.22,1,.36,1); }
+
+  .card-press{ transition: transform .18s ease, box-shadow .18s ease; }
+  .card-press:active{ transform:scale(0.98); }
+
+  .chili-glow-btn{
+    background:linear-gradient(135deg, var(--chili), var(--chili-deep));
+    box-shadow: 0 10px 30px -8px var(--chili-glow), inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+
+  .view{ display:none; }
+  .view.active{ display:block; animation: fadeUp .35s cubic-bezier(.22,1,.36,1); }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+  ::-webkit-scrollbar{ width:0; height:0; }
+
+  .locked-veil{
+    background:linear-gradient(180deg, rgba(8,9,12,0.2), rgba(8,9,12,0.86) 70%);
+  }
+
+  .skeleton{ background:linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.09), rgba(255,255,255,0.04)); background-size:200% 100%; animation:shimmer 1.4s infinite; }
+  @keyframes shimmer{ 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+
+  .toast{
+    transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .35s ease;
+  }
+</style>
+</head>
+<body class="pb-32">
+
+<!-- Top bar -->
+<header class="sticky top-0 z-30 px-5 pt-5 pb-3">
+  <div class="glass rounded-3xl px-5 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl chili-glow-btn flex items-center justify-center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2 L20 7 V17 L12 22 L4 17 V7 Z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <p class="font-display text-[15px] tracking-wide" id="app-name-label">RedWaist</p>
+        <p class="text-[11px] text-[var(--ink-dim)] -mt-0.5" id="greeting">Welcome</p>
+      </div>
+    </div>
+    <button id="profile-shortcut" class="w-9 h-9 rounded-xl glass flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="#F4F1EF" stroke-width="1.6"/><path d="M4.5 20c1.6-3.6 5-5 7.5-5s5.9 1.4 7.5 5" stroke="#F4F1EF" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="px-5">
+
+  <!-- HOME -->
+  <section id="view-home" class="view active space-y-5">
+    <div id="featured-wrap"></div>
+
+    <div class="flex items-center justify-between pt-2">
+      <h2 class="font-display text-[13px] tracking-widest text-[var(--ink-dim)] uppercase">Library</h2>
+      <span class="text-[11px] text-[var(--ink-dim)]" id="library-count"></span>
+    </div>
+    <div id="video-grid" class="grid grid-cols-2 gap-3"></div>
+  </section>
+
+  <!-- TASKS -->
+  <section id="view-tasks" class="view space-y-4">
+    <div>
+      <h2 class="font-display text-[20px]">Tasks</h2>
+      <p class="text-[12px] text-[var(--ink-dim)] mt-1">Complete tasks to unlock videos. Progress is stored on this device only.</p>
+    </div>
+    <div id="task-list" class="space-y-3"></div>
+  </section>
+
+  <!-- VIDEOS -->
+  <section id="view-videos" class="view space-y-4">
+    <div>
+      <h2 class="font-display text-[20px]">Videos</h2>
+      <p class="text-[12px] text-[var(--ink-dim)] mt-1">Your full unlockable library.</p>
+    </div>
+    <div id="video-list" class="space-y-3"></div>
+  </section>
+
+  <!-- PROFILE -->
+  <section id="view-profile" class="view space-y-4">
+    <div class="glass-strong rounded-3xl p-5">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl chili-glow-btn flex items-center justify-center font-display text-lg" id="profile-avatar">?</div>
+        <div>
+          <p class="font-display text-[16px]" id="profile-name">Guest</p>
+          <p class="text-[12px] text-[var(--ink-dim)]" id="profile-id">Not connected to Telegram</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass rounded-3xl p-5 space-y-4">
+      <h3 class="font-display text-[13px] tracking-widest text-[var(--ink-dim)] uppercase">Your progress</h3>
+      <div id="profile-stats" class="grid grid-cols-2 gap-3"></div>
+    </div>
+
+    <div class="glass rounded-3xl p-5">
+      <button id="reset-progress" class="w-full text-left text-[13px] text-[var(--chili)] font-medium">Reset local progress</button>
+      <p class="text-[11px] text-[var(--ink-dim)] mt-2 leading-relaxed">This clears task completion and unlocks stored in this browser's localStorage. It does not affect the server-side data files.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- Video Modal -->
+<div id="video-modal" class="fixed inset-0 z-50 hidden items-end justify-center">
+  <div id="modal-backdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+  <div class="relative w-full max-w-md glass-strong rounded-t-[28px] p-5 pb-8 space-y-4 max-h-[85vh] overflow-y-auto">
+    <div class="w-10 h-1 rounded-full bg-white/20 mx-auto"></div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast fixed left-1/2 -translate-x-1/2 bottom-28 z-50 opacity-0 translate-y-3 pointer-events-none">
+  <div class="glass-strong rounded-2xl px-4 py-3 text-[13px] flex items-center gap-2">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#E8384F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span id="toast-text">Done</span>
+  </div>
+</div>
+
+<!-- Bottom floating nav -->
+<nav class="fixed bottom-5 left-0 right-0 z-40 flex justify-center px-5">
+  <div class="nav-pill rounded-[28px] px-2 py-2 flex items-center gap-1 relative">
+    <button class="nav-item active relative z-10 flex flex-col items-center justify-center w-16 h-14 rounded-[20px]" data-view="home">
+      <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 11.5 12 4l8 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="nav-item relative z-10 flex flex-col items-center justify-center w-16 h-14 rounded-[20px]" data-view="tasks">
+      <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 12.3l2.3 2.3 4.7-4.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="nav-item relative z-10 flex flex-col items-center justify-center w-16 h-14 rounded-[20px]" data-view="videos">
+      <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="6" width="13" height="12" rx="2.2" stroke="currentColor" stroke-width="1.7"/><path d="M16.5 10.5 20.5 8v8l-4-2.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="nav-item relative z-10 flex flex-col items-center justify-center w-16 h-14 rounded-[20px]" data-view="profile">
+      <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 20c1.6-3.6 5-5 7.5-5s5.9 1.4 7.5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    </button>
+    <div id="nav-indicator" class="nav-indicator absolute top-2 left-2 w-16 h-14 rounded-[20px] chili-glow-btn"></div>
+  </div>
+</nav>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Telegram WebApp ---------- */
+  const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  if (tg) { tg.ready(); tg.expand(); }
+  const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
+
+  /* ---------- State ---------- */
+  let DATA = null;
+  const STORAGE_KEY = "redwaist_progress_v1";
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return { completedTasks: [], unlockedVideos: [] };
+  }
+  function saveProgress(p){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+  }
+  let progress = loadProgress();
+
+  /* ---------- Data loading ---------- */
+  async function loadData(){
+    try{
+      const res = await fetch('data/data.json', { cache: 'no-store' });
+      DATA = await res.json();
+    }catch(e){
+      DATA = { settings:{appName:"RedWaist", accentColor:"#E8384F", defaultRequiredTasks:3}, videos:[], tasks:[] };
+    }
+    applySettings();
+    renderAll();
+  }
+
+  function applySettings(){
+    const s = DATA.settings || {};
+    document.getElementById('app-name-label').textContent = s.appName || "RedWaist";
+    document.title = s.appName || "RedWaist";
+    if (s.accentColor){
+      document.documentElement.style.setProperty('--chili', s.accentColor);
+    }
+    const greetName = tgUser && tgUser.first_name ? tgUser.first_name : "Guest";
+    document.getElementById('greeting').textContent = "Welcome, " + greetName;
+  }
+
+  /* ---------- Helpers ---------- */
+  function activeTasks(){ return (DATA.tasks||[]).filter(t=>t.status==='active').sort((a,b)=>(a.order||0)-(b.order||0)); }
+  function activeVideos(){ return (DATA.videos||[]).filter(v=>v.status==='active'); }
+  function completedCount(){ return progress.completedTasks.length; }
+  function isVideoUnlocked(video){
+    if (progress.unlockedVideos.includes(video.id)) return true;
+    return completedCount() >= (video.requiredTasks || DATA.settings.defaultRequiredTasks || 0);
+  }
+  function toast(msg){
+    const el = document.getElementById('toast');
+    document.getElementById('toast-text').textContent = msg;
+    el.classList.remove('opacity-0','translate-y-3');
+    el.classList.add('opacity-100','translate-y-0');
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(()=>{
+      el.classList.add('opacity-0','translate-y-3');
+      el.classList.remove('opacity-100','translate-y-0');
+    }, 2200);
+  }
+
+  /* ---------- Rendering ---------- */
+  function ringSVG(pct, size){
+    size = size || 40;
+    const r = (size/2) - 3;
+    const c = 2*Math.PI*r;
+    const offset = c - (pct/100)*c;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="-rotate-90">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="rgba(255,255,255,0.12)" stroke-width="3" fill="none"/>
+      <circle class="ring-progress" cx="${size/2}" cy="${size/2}" r="${r}" stroke="var(--chili)" stroke-width="3" fill="none"
+        stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"/>
+    </svg>`;
+  }
+
+  function videoCard(v, compact){
+    const need = v.requiredTasks || 0;
+    const have = Math.min(completedCount(), need);
+    const pct = need>0 ? Math.round((have/need)*100) : 100;
+    const unlocked = isVideoUnlocked(v);
+    return `
+    <button class="card-press text-left rounded-2xl overflow-hidden glass relative group" data-open-video="${v.id}">
+      <div class="relative aspect-[4/5] ${compact?'':'aspect-[16/10]'}">
+        <img src="${v.thumbnail}" alt="" class="absolute inset-0 w-full h-full object-cover ${unlocked?'':'opacity-40 blur-[1px]'}" loading="lazy">
+        <div class="absolute inset-0 locked-veil"></div>
+        ${unlocked ? `
+          <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+            <span class="text-[10px] font-medium px-2 py-1 rounded-lg glass">${v.duration||''}</span>
+            <span class="w-7 h-7 rounded-full chili-glow-btn flex items-center justify-center">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+          </div>` : `
+          <div class="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+            ${ringSVG(pct, 46)}
+            <span class="text-[10px] font-semibold text-[var(--ink-dim)] -mt-9">${have}/${need}</span>
+          </div>`
+        }
+      </div>
+      <div class="p-2.5">
+        <p class="text-[12.5px] font-medium leading-snug line-clamp-2">${v.title}</p>
+        ${!unlocked ? `<p class="text-[10px] text-[var(--ink-dim)] mt-0.5">${need-have} task${(need-have)===1?'':'s'} left</p>` : `<p class="text-[10px] text-[var(--chili)] mt-0.5">Unlocked</p>`}
+      </div>
+    </button>`;
+  }
+
+  function renderHome(){
+    const featuredId = DATA.settings.featuredVideo;
+    const featured = activeVideos().find(v=>v.id===featuredId) || activeVideos()[0];
+    const wrap = document.getElementById('featured-wrap');
+    if (!featured){ wrap.innerHTML = ''; }
+    else {
+      const need = featured.requiredTasks||0;
+      const have = Math.min(completedCount(), need);
+      const unlocked = isVideoUnlocked(featured);
+      wrap.innerHTML = `
+      <button data-open-video="${featured.id}" class="card-press w-full text-left rounded-3xl overflow-hidden glass-strong relative">
+        <div class="relative aspect-[16/11]">
+          <img src="${featured.thumbnail}" class="absolute inset-0 w-full h-full object-cover ${unlocked?'':'opacity-45 blur-[1.5px]'}" loading="lazy">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent"></div>
+          <div class="absolute top-3 left-3">
+            <span class="text-[10px] font-display tracking-widest uppercase px-2.5 py-1 rounded-lg chili-glow-btn">Featured</span>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 p-4 space-y-1.5">
+            <p class="font-display text-[17px] leading-tight">${featured.title}</p>
+            <p class="text-[11.5px] text-[var(--ink-dim)] line-clamp-2">${featured.description||''}</p>
+            <div class="flex items-center gap-2 pt-1">
+              ${unlocked
+                ? `<span class="inline-flex items-center gap-1.5 text-[12px] text-[var(--chili)] font-medium"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#E8384F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Ready to watch</span>`
+                : `<span class="inline-flex items-center gap-1.5 text-[12px] text-[var(--ink-dim)]">${ringSVG(need>0?Math.round((have/need)*100):0,16)} ${have}/${need} tasks complete</span>`}
+            </div>
+          </div>
+        </div>
+      </button>`;
+    }
+
+    document.getElementById('library-count').textContent = activeVideos().length + " videos";
+    document.getElementById('video-grid').innerHTML = activeVideos().map(v=>videoCard(v,true)).join('');
+  }
+
+  function taskCard(t){
+    const done = progress.completedTasks.includes(t.id);
+    return `
+    <div class="glass rounded-2xl p-3.5 flex items-center gap-3">
+      <img src="${t.thumbnail}" class="w-12 h-12 rounded-xl object-cover flex-shrink-0" loading="lazy">
+      <div class="flex-1 min-w-0">
+        <p class="text-[13px] font-medium truncate">${t.title}</p>
+        <p class="text-[11px] text-[var(--ink-dim)]">${done ? 'Completed' : 'Not started'}</p>
+      </div>
+      ${done
+        ? `<span class="w-9 h-9 rounded-xl flex items-center justify-center glass-strong flex-shrink-0">
+             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#E8384F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+           </span>`
+        : `<button data-do-task="${t.id}" class="chili-glow-btn text-[11.5px] font-semibold px-3.5 py-2 rounded-xl flex-shrink-0">Start</button>`
+      }
+    </div>`;
+  }
+
+  function renderTasks(){
+    document.getElementById('task-list').innerHTML = activeTasks().map(taskCard).join('') || `<p class="text-[12px] text-[var(--ink-dim)]">No tasks configured yet.</p>`;
+  }
+
+  function renderVideosList(){
+    document.getElementById('video-list').innerHTML = activeVideos().map(v => {
+      const need = v.requiredTasks||0;
+      const have = Math.min(completedCount(), need);
+      const unlocked = isVideoUnlocked(v);
+      return `
+      <button data-open-video="${v.id}" class="card-press w-full glass rounded-2xl p-3 flex items-center gap-3 text-left">
+        <div class="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0">
+          <img src="${v.thumbnail}" class="w-full h-full object-cover ${unlocked?'':'opacity-40 blur-[1px]'}" loading="lazy">
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-[13px] font-medium truncate">${v.title}</p>
+          <p class="text-[11px] text-[var(--ink-dim)]">${v.duration||''} ${unlocked ? '· Unlocked' : `· ${have}/${need} tasks`}</p>
+        </div>
+        ${unlocked
+          ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="flex-shrink-0"><path d="M8 5v14l11-7z" fill="#E8384F"/></svg>`
+          : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="flex-shrink-0"><rect x="5" y="10" width="14" height="10" rx="2" stroke="#9A99A3" stroke-width="1.6"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="#9A99A3" stroke-width="1.6"/></svg>`
+        }
+      </button>`;
+    }).join('');
+  }
+
+  function renderProfile(){
+    const name = tgUser ? [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') : 'Guest';
+    document.getElementById('profile-name').textContent = name || 'Guest';
+    document.getElementById('profile-id').textContent = tgUser ? ('Telegram ID: ' + tgUser.id) : 'Not connected to Telegram';
+    document.getElementById('profile-avatar').textContent = (name||'G').trim().charAt(0).toUpperCase();
+
+    const totalVideos = activeVideos().length;
+    const unlockedVideos = activeVideos().filter(isVideoUnlocked).length;
+    const totalTasks = activeTasks().length;
+
+    document.getElementById('profile-stats').innerHTML = `
+      <div class="glass-strong rounded-2xl p-4">
+        <p class="font-display text-[22px]">${completedCount()}<span class="text-[13px] text-[var(--ink-dim)]">/${totalTasks}</span></p>
+        <p class="text-[11px] text-[var(--ink-dim)] mt-1">Tasks completed</p>
+      </div>
+      <div class="glass-strong rounded-2xl p-4">
+        <p class="font-display text-[22px]">${unlockedVideos}<span class="text-[13px] text-[var(--ink-dim)]">/${totalVideos}</span></p>
+        <p class="text-[11px] text-[var(--ink-dim)] mt-1">Videos unlocked</p>
+      </div>`;
+  }
+
+  function renderAll(){
+    renderHome();
+    renderTasks();
+    renderVideosList();
+    renderProfile();
+  }
+
+  /* ---------- Modal ---------- */
+  function openVideoModal(id){
+    const v = (DATA.videos||[]).find(x=>x.id===id);
+    if(!v) return;
+    const unlocked = isVideoUnlocked(v);
+    const need = v.requiredTasks||0;
+    const have = Math.min(completedCount(), need);
+    const modal = document.getElementById('video-modal');
+    const content = document.getElementById('modal-content');
+
+    content.innerHTML = `
+      <div class="aspect-video rounded-2xl overflow-hidden bg-black relative">
+        ${unlocked
+          ? `<video src="${v.videoUrl}" controls playsinline class="w-full h-full object-cover"></video>`
+          : `<img src="${v.thumbnail}" class="w-full h-full object-cover opacity-40 blur-[2px]">`
+        }
+      </div>
+      <div class="space-y-1">
+        <p class="font-display text-[17px]">${v.title}</p>
+        <p class="text-[12.5px] text-[var(--ink-dim)] leading-relaxed">${v.description||''}</p>
+      </div>
+      ${unlocked ? `
+        <a href="${v.downloadUrl}" target="_blank" rel="noopener" class="chili-glow-btn w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-[13.5px]">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+          Download video
+        </a>
+      ` : `
+        <div class="glass rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <p class="text-[12.5px] font-medium">${have}/${need} tasks completed</p>
+            ${ringSVG(need>0?Math.round((have/need)*100):0,32)}
+          </div>
+          <button data-goto-tasks class="w-full py-3 rounded-xl glass-strong text-[13px] font-semibold">Go to tasks</button>
+        </div>
+      `}
+    `;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  function closeModal(){
+    const modal = document.getElementById('video-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  /* ---------- Task completion ---------- */
+  function doTask(id){
+    const t = activeTasks().find(x=>x.id===id);
+    if(!t) return;
+    if (t.targetUrl){
+      if (tg && tg.openLink) tg.openLink(t.targetUrl);
+      else window.open(t.targetUrl, '_blank');
+    }
+    if (!progress.completedTasks.includes(id)){
+      progress.completedTasks.push(id);
+      saveProgress(progress);
+    }
+    renderAll();
+    toast('Task marked complete');
+  }
+
+  /* ---------- Nav ---------- */
+  const views = ['home','tasks','videos','profile'];
+  function switchView(name){
+    views.forEach(v=>{
+      document.getElementById('view-'+v).classList.toggle('active', v===name);
+      document.querySelector(`.nav-item[data-view="${v}"]`).classList.toggle('active', v===name);
+    });
+    positionIndicator();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+  function positionIndicator(){
+    const active = document.querySelector('.nav-item.active');
+    const indicator = document.getElementById('nav-indicator');
+    if (active && indicator){
+      indicator.style.transform = `translateX(${active.offsetLeft - active.parentElement.querySelectorAll('.nav-item')[0].offsetLeft}px)`;
+    }
+  }
+
+  /* ---------- Event delegation ---------- */
+  document.addEventListener('click', (e)=>{
+    const navBtn = e.target.closest('.nav-item');
+    if (navBtn){ switchView(navBtn.dataset.view); return; }
+
+    const openVid = e.target.closest('[data-open-video]');
+    if (openVid){ openVideoModal(openVid.dataset.openVideo); return; }
+
+    const taskBtn = e.target.closest('[data-do-task]');
+    if (taskBtn){ doTask(taskBtn.dataset.doTask); return; }
+
+    if (e.target.closest('#modal-backdrop')){ closeModal(); return; }
+    if (e.target.closest('[data-goto-tasks]')){ closeModal(); switchView('tasks'); return; }
+    if (e.target.closest('#profile-shortcut')){ switchView('profile'); return; }
+
+    if (e.target.closest('#reset-progress')){
+      progress = { completedTasks: [], unlockedVideos: [] };
+      saveProgress(progress);
+      renderAll();
+      toast('Progress reset');
+      return;
+    }
+  });
+
+  window.addEventListener('resize', positionIndicator);
+
+  loadData().then(positionIndicator);
+})();
+</script>
+</body>
+      </html>

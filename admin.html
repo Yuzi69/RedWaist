@@ -37,47 +37,46 @@
 <body class="min-h-screen pb-16">
 
 <header class="border-b border-white/[0.07] sticky top-0 z-30 backdrop-blur-xl bg-black/40">
-  <div class="max-w-5xl mx-auto px-5 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,var(--chili),var(--chili-deep))">
+  <div class="max-w-5xl mx-auto px-5 py-4 flex items-center justify-between gap-2">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,var(--chili),var(--chili-deep))">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2 L20 7 V17 L12 22 L4 17 V7 Z" stroke="white" stroke-width="1.6"/></svg>
       </div>
-      <div>
+      <div class="min-w-0">
         <p class="font-display text-[14px]">RedWaist Admin</p>
-        <p class="text-[10.5px] text-[var(--ink-dim)]">Local JSON management layer</p>
+        <p class="text-[10.5px] text-[var(--ink-dim)] truncate" id="conn-status">Not connected</p>
       </div>
     </div>
-    <div class="flex items-center gap-2">
-      <button id="btn-load-json" class="btn-ghost">Load JSON</button>
-      <button id="btn-download-json" class="btn-primary">Download JSON</button>
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <button id="btn-save" class="btn-primary">Save</button>
+      <div class="relative">
+        <button id="btn-more" class="btn-ghost px-3">⋯</button>
+        <div id="more-menu" class="hidden absolute right-0 mt-2 w-52 glass-strong rounded-xl p-1.5 space-y-0.5 z-40">
+          <button id="btn-open-connect" class="w-full text-left px-3 py-2 rounded-lg text-[12px]">GitHub connection…</button>
+          <button id="btn-load-json" class="w-full text-left px-3 py-2 rounded-lg text-[12px]">Load JSON from file</button>
+          <button id="btn-download-json" class="w-full text-left px-3 py-2 rounded-lg text-[12px]">Download backup</button>
+          <button id="btn-disconnect" class="w-full text-left px-3 py-2 rounded-lg text-[12px] text-[#ff8b98] hidden">Disconnect GitHub</button>
+        </div>
+      </div>
     </div>
     <input type="file" id="file-input" accept="application/json" class="hidden">
   </div>
 </header>
 
-<main class="max-w-5xl mx-auto px-5 py-6 space-y-6">
-
-  <!-- Mode selector -->
-  <div class="glass rounded-2xl p-1 inline-flex gap-1">
-    <button class="tab-btn active px-4 py-2 rounded-xl text-[12.5px] font-medium" data-mode="local">Local / Download Mode</button>
-    <button class="tab-btn px-4 py-2 rounded-xl text-[12.5px] font-medium" data-mode="github">GitHub Mode</button>
-  </div>
-
-  <!-- Local mode notice -->
-  <div id="local-notice" class="glass rounded-2xl p-4 text-[12px] text-[var(--ink-dim)] leading-relaxed">
-    Static HTML cannot securely write files on its own. In this mode, edit data below, then click
-    <b class="text-[var(--ink)]">Download JSON</b> to save an updated <code>data.json</code>, and manually
-    upload/commit it to your hosting (GitHub Pages, Vercel, etc.).
-  </div>
-
-  <!-- GitHub mode panel -->
-  <div id="github-panel" class="hidden glass rounded-2xl p-5 space-y-4">
-    <div class="glass-strong rounded-xl p-3.5 text-[11.5px] text-[var(--ink-dim)] leading-relaxed">
-      ⚠ Storing a GitHub Personal Access Token inside a public <code>admin.html</code> is insecure — anyone who
-      can load this page (or view its source / network requests) can read the token from memory. Only use this
-      mode locally, on a private device, or behind your own authentication. Never deploy this token-entry
-      workflow on a publicly reachable admin page. If you can't add secure server-side auth, prefer the
-      Local/Download workflow above and commit files to GitHub yourself.
+<!-- Connect modal -->
+<div id="connect-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-5">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="connect-backdrop"></div>
+  <div class="relative w-full max-w-md glass-strong rounded-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+    <h3 class="font-display text-[15px]">Connect GitHub</h3>
+    <p class="text-[12px] text-[var(--ink-dim)] leading-relaxed">
+      Connect once, then every edit here can be published with a single <b class="text-[var(--ink)]">Save</b> —
+      no more manual download/upload. Your live app (<code>index.html</code>) reads the file this saves to, so
+      changes appear for users after your host redeploys (GitHub Pages usually takes under a minute).
+    </p>
+    <div class="glass rounded-xl p-3.5 text-[11px] text-[var(--ink-dim)] leading-relaxed">
+      ⚠ Your token is only stored in this browser's storage — it's never uploaded anywhere or seen by the public
+      app. Anyone with access to this device/browser could read it though, so use a private device and a token
+      scoped to just this one repo.
     </div>
     <div class="grid grid-cols-2 gap-3">
       <div><label>GitHub owner</label><input id="gh-owner" placeholder="username"></div>
@@ -85,16 +84,20 @@
       <div><label>Branch</label><input id="gh-branch" placeholder="main" value="main"></div>
       <div><label>File path</label><input id="gh-path" placeholder="data/data.json" value="data/data.json"></div>
     </div>
-    <div>
-      <label>Personal Access Token (kept in memory only, never saved)</label>
-      <input id="gh-token" type="password" placeholder="ghp_...">
-    </div>
+    <div><label>Personal Access Token</label><input id="gh-token" type="password" placeholder="ghp_..."></div>
+    <label class="flex items-start gap-2 text-[11px] text-[var(--ink-dim)] leading-snug">
+      <input type="checkbox" id="gh-remember" class="mt-0.5">
+      <span>Remember this token on this device, so I don't have to paste it in again next time.</span>
+    </label>
     <div class="flex gap-2">
-      <button id="gh-fetch" class="btn-ghost">Fetch from GitHub</button>
-      <button id="gh-commit" class="btn-primary">Commit changes to GitHub</button>
+      <button id="btn-cancel-connect" class="btn-ghost flex-1">Cancel</button>
+      <button id="btn-do-connect" class="btn-primary flex-1">Connect &amp; Load</button>
     </div>
-    <p id="gh-status" class="text-[11px] text-[var(--ink-dim)]"></p>
+    <p id="connect-status" class="text-[11px] text-[#ff8b98]"></p>
   </div>
+</div>
+
+<main class="max-w-5xl mx-auto px-5 py-6 space-y-6">
 
   <!-- Section tabs -->
   <div class="flex gap-2 flex-wrap">
@@ -161,17 +164,6 @@
     window.__t = setTimeout(()=> el.classList.add('opacity-0','translate-y-3'), 2200);
   }
   function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,8); }
-
-  /* ---------- Mode tabs ---------- */
-  document.querySelectorAll('[data-mode]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('[data-mode]').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const mode = btn.dataset.mode;
-      document.getElementById('local-notice').classList.toggle('hidden', mode!=='local');
-      document.getElementById('github-panel').classList.toggle('hidden', mode!=='github');
-    });
-  });
 
   /* ---------- Section tabs ---------- */
   document.querySelectorAll('.section-tab').forEach(btn=>{
@@ -380,8 +372,8 @@
   function escAttr(str){ return (str||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
   function escHtml(str){ return (str||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  /* ---------- Load / Download ---------- */
-  document.getElementById('btn-load-json').addEventListener('click', ()=> document.getElementById('file-input').click());
+  /* ---------- Load / Download (fallback, via ⋯ menu) ---------- */
+  document.getElementById('btn-load-json').addEventListener('click', ()=>{ closeMoreMenu(); document.getElementById('file-input').click(); });
   document.getElementById('file-input').addEventListener('change', (e)=>{
     const file = e.target.files[0];
     if(!file) return;
@@ -396,6 +388,7 @@
     reader.readAsText(file);
   });
   document.getElementById('btn-download-json').addEventListener('click', ()=>{
+    closeMoreMenu();
     const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -404,68 +397,146 @@
     toast('Downloaded data.json');
   });
 
-  /* ---------- GitHub mode ---------- */
-  function b64EncodeUnicode(str){
-    return btoa(unescape(encodeURIComponent(str)));
+  /* ---------- ⋯ menu ---------- */
+  function closeMoreMenu(){ document.getElementById('more-menu').classList.add('hidden'); }
+  document.getElementById('btn-more').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    document.getElementById('more-menu').classList.toggle('hidden');
+  });
+  document.addEventListener('click', (e)=>{
+    if (!e.target.closest('#more-menu') && !e.target.closest('#btn-more')) closeMoreMenu();
+  });
+
+  /* ---------- GitHub connect + one-click Save ---------- */
+  const GH_CFG_KEY = 'redwaist_admin_gh_cfg';
+  const GH_TOKEN_KEY = 'redwaist_admin_gh_token';
+  let ghState = { owner:'', repo:'', branch:'main', path:'data/data.json', token:'', sha:null, connected:false };
+
+  function b64EncodeUnicode(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function b64DecodeUnicode(str){ return decodeURIComponent(escape(atob(str))); }
+
+  function updateConnStatus(msg){
+    const el = document.getElementById('conn-status');
+    if (msg){ el.textContent = msg; return; }
+    el.textContent = ghState.connected ? `Connected · ${ghState.owner}/${ghState.repo}` : 'Not connected — Save will prompt for GitHub setup';
+    document.getElementById('btn-disconnect').classList.toggle('hidden', !ghState.connected);
   }
-  function b64DecodeUnicode(str){
-    return decodeURIComponent(escape(atob(str)));
+
+  function loadStoredGhConfig(){
+    try{
+      const cfg = JSON.parse(localStorage.getItem(GH_CFG_KEY) || 'null');
+      if (cfg){ Object.assign(ghState, cfg); }
+      const savedToken = localStorage.getItem(GH_TOKEN_KEY) || sessionStorage.getItem(GH_TOKEN_KEY);
+      if (savedToken) ghState.token = savedToken;
+    }catch(e){}
   }
-  function ghConfig(){
-    return {
-      owner: document.getElementById('gh-owner').value.trim(),
-      repo: document.getElementById('gh-repo').value.trim(),
-      branch: document.getElementById('gh-branch').value.trim() || 'main',
-      path: document.getElementById('gh-path').value.trim() || 'data/data.json',
-      token: document.getElementById('gh-token').value.trim(),
+  function persistGhConfig(rememberToken){
+    localStorage.setItem(GH_CFG_KEY, JSON.stringify({ owner:ghState.owner, repo:ghState.repo, branch:ghState.branch, path:ghState.path }));
+    sessionStorage.setItem(GH_TOKEN_KEY, ghState.token);
+    if (rememberToken) localStorage.setItem(GH_TOKEN_KEY, ghState.token);
+    else localStorage.removeItem(GH_TOKEN_KEY);
+  }
+
+  function openConnectModal(){
+    closeMoreMenu();
+    document.getElementById('gh-owner').value = ghState.owner;
+    document.getElementById('gh-repo').value = ghState.repo;
+    document.getElementById('gh-branch').value = ghState.branch || 'main';
+    document.getElementById('gh-path').value = ghState.path || 'data/data.json';
+    document.getElementById('gh-token').value = ghState.token || '';
+    document.getElementById('connect-status').textContent = '';
+    const modal = document.getElementById('connect-modal');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+  }
+  function closeConnectModal(){
+    const modal = document.getElementById('connect-modal');
+    modal.classList.add('hidden'); modal.classList.remove('flex');
+  }
+  document.getElementById('btn-open-connect').addEventListener('click', openConnectModal);
+  document.getElementById('btn-cancel-connect').addEventListener('click', closeConnectModal);
+  document.getElementById('connect-backdrop').addEventListener('click', closeConnectModal);
+  document.getElementById('btn-disconnect').addEventListener('click', ()=>{
+    closeMoreMenu();
+    ghState = { owner:'', repo:'', branch:'main', path:'data/data.json', token:'', sha:null, connected:false };
+    localStorage.removeItem(GH_CFG_KEY); localStorage.removeItem(GH_TOKEN_KEY); sessionStorage.removeItem(GH_TOKEN_KEY);
+    updateConnStatus();
+    toast('Disconnected from GitHub');
+  });
+
+  async function ghFetchFile(){
+    const res = await fetch(`https://api.github.com/repos/${ghState.owner}/${ghState.repo}/contents/${ghState.path}?ref=${ghState.branch}`, {
+      headers: { Authorization: `Bearer ${ghState.token}`, Accept: 'application/vnd.github+json' }
+    });
+    if(!res.ok) throw new Error('GitHub error ' + res.status + ' — check owner/repo/path/token');
+    const json = await res.json();
+    ghState.sha = json.sha;
+    return JSON.parse(b64DecodeUnicode(json.content.replace(/\n/g,'')));
+  }
+  async function ghCommitFile(){
+    const body = {
+      message: 'Update RedWaist data via admin panel',
+      content: b64EncodeUnicode(JSON.stringify(DATA, null, 2)),
+      branch: ghState.branch,
     };
+    if (ghState.sha) body.sha = ghState.sha;
+    const res = await fetch(`https://api.github.com/repos/${ghState.owner}/${ghState.repo}/contents/${ghState.path}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${ghState.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok){ const t = await res.text(); throw new Error('GitHub error ' + res.status + ': ' + t); }
+    const json = await res.json();
+    ghState.sha = json.content.sha;
   }
-  document.getElementById('gh-fetch').addEventListener('click', async ()=>{
-    const c = ghConfig();
-    const status = document.getElementById('gh-status');
-    if(!c.owner || !c.repo || !c.token){ status.textContent = 'Owner, repo, and token are required.'; return; }
-    status.textContent = 'Fetching...';
+
+  document.getElementById('btn-do-connect').addEventListener('click', async ()=>{
+    ghState.owner = document.getElementById('gh-owner').value.trim();
+    ghState.repo = document.getElementById('gh-repo').value.trim();
+    ghState.branch = document.getElementById('gh-branch').value.trim() || 'main';
+    ghState.path = document.getElementById('gh-path').value.trim() || 'data/data.json';
+    ghState.token = document.getElementById('gh-token').value.trim();
+    const remember = document.getElementById('gh-remember').checked;
+    const status = document.getElementById('connect-status');
+    if(!ghState.owner || !ghState.repo || !ghState.token){ status.textContent = 'Owner, repo, and token are required.'; return; }
+    status.textContent = 'Connecting...';
     try{
-      const res = await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}?ref=${c.branch}`, {
-        headers: { Authorization: `Bearer ${c.token}`, Accept: 'application/vnd.github+json' }
-      });
-      if(!res.ok) throw new Error('GitHub error ' + res.status);
-      const json = await res.json();
-      DATA = JSON.parse(b64DecodeUnicode(json.content.replace(/\n/g,'')));
-      window.__ghSha = json.sha;
+      DATA = await ghFetchFile();
+      ghState.connected = true;
+      persistGhConfig(remember);
       renderAll();
-      status.textContent = 'Loaded from GitHub at ' + new Date().toLocaleTimeString();
-      toast('Loaded from GitHub');
+      updateConnStatus();
+      closeConnectModal();
+      toast('Connected — loaded live data from GitHub');
     }catch(err){
-      status.textContent = 'Fetch failed: ' + err.message;
+      status.textContent = err.message;
     }
   });
-  document.getElementById('gh-commit').addEventListener('click', async ()=>{
-    const c = ghConfig();
-    const status = document.getElementById('gh-status');
-    if(!c.owner || !c.repo || !c.token){ status.textContent = 'Owner, repo, and token are required.'; return; }
-    status.textContent = 'Committing...';
+
+  document.getElementById('btn-save').addEventListener('click', async ()=>{
+    if (!ghState.connected){ openConnectModal(); return; }
+    const btn = document.getElementById('btn-save');
+    const original = btn.textContent;
+    btn.textContent = 'Saving…'; btn.disabled = true;
     try{
-      const body = {
-        message: 'Update RedWaist data via admin panel',
-        content: b64EncodeUnicode(JSON.stringify(DATA, null, 2)),
-        branch: c.branch,
-      };
-      if (window.__ghSha) body.sha = window.__ghSha;
-      const res = await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${c.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      if(!res.ok){ const t = await res.text(); throw new Error('GitHub error ' + res.status + ': ' + t); }
-      const json = await res.json();
-      window.__ghSha = json.content.sha;
-      status.textContent = 'Committed at ' + new Date().toLocaleTimeString();
-      toast('Committed to GitHub');
+      await ghCommitFile();
+      toast('Saved — live in ~1 minute after your host redeploys');
+      updateConnStatus(`Connected · ${ghState.owner}/${ghState.repo} · saved ${new Date().toLocaleTimeString()}`);
     }catch(err){
-      status.textContent = 'Commit failed: ' + err.message;
+      toast('Save failed: ' + err.message);
+    }finally{
+      btn.textContent = original; btn.disabled = false;
     }
   });
+
+  /* ---------- Init ---------- */
+  loadStoredGhConfig();
+  updateConnStatus();
+  if (ghState.owner && ghState.repo && ghState.token){
+    ghFetchFile().then(data=>{
+      DATA = data; ghState.connected = true; renderAll(); updateConnStatus();
+      toast('Loaded live data from GitHub');
+    }).catch(()=>{ updateConnStatus('Saved connection found but auto-load failed — open ⋯ → GitHub connection'); });
+  }
 
   renderAll();
 })();

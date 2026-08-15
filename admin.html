@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RedWaist — Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#08090c; --glass:rgba(255,255,255,0.055); --glass-strong:rgba(255,255,255,0.09);
+    --border:rgba(255,255,255,0.09); --chili:#E8384F; --chili-deep:#8C1129; --ink:#F4F1EF; --ink-dim:#9A99A3;
+  }
+  html,body{background:var(--void); color:var(--ink); font-family:'Inter',sans-serif;}
+  body{ background: radial-gradient(120% 50% at 50% -10%, rgba(232,56,79,0.14) 0%, rgba(232,56,79,0) 55%), var(--void); }
+  .font-display{font-family:'Unbounded',sans-serif;}
+  .glass{ background:var(--glass); border:1px solid var(--border); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  .glass-strong{ background:var(--glass-strong); border:1px solid rgba(255,255,255,0.14); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); }
+  input, textarea, select{
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); color:var(--ink);
+    border-radius:12px; padding:9px 12px; font-size:13px; width:100%;
+  }
+  input:focus, textarea:focus, select:focus{ outline:none; border-color:var(--chili); }
+  label{ font-size:11px; color:var(--ink-dim); display:block; margin-bottom:4px; }
+  .btn-primary{ background:linear-gradient(135deg, var(--chili), var(--chili-deep)); color:white; font-weight:600; border-radius:12px; padding:10px 16px; font-size:13px; }
+  .btn-ghost{ background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--ink); border-radius:12px; padding:10px 16px; font-size:13px; }
+  .btn-danger{ background:rgba(232,56,79,0.12); border:1px solid rgba(232,56,79,0.35); color:#ff8b98; border-radius:10px; padding:7px 12px; font-size:12px; }
+  .tab-btn.active{ background:var(--glass-strong); color:white; }
+  .tab-btn{ color:var(--ink-dim); }
+  ::-webkit-scrollbar{ width:8px; } ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.1); border-radius:8px; }
+  .toast{ transition: transform .3s ease, opacity .3s ease; }
+</style>
+</head>
+<body class="min-h-screen pb-16">
+
+<header class="border-b border-white/[0.07] sticky top-0 z-30 backdrop-blur-xl bg-black/40">
+  <div class="max-w-5xl mx-auto px-5 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,var(--chili),var(--chili-deep))">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2 L20 7 V17 L12 22 L4 17 V7 Z" stroke="white" stroke-width="1.6"/></svg>
+      </div>
+      <div>
+        <p class="font-display text-[14px]">RedWaist Admin</p>
+        <p class="text-[10.5px] text-[var(--ink-dim)]">Local JSON management layer</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="btn-load-json" class="btn-ghost">Load JSON</button>
+      <button id="btn-download-json" class="btn-primary">Download JSON</button>
+    </div>
+    <input type="file" id="file-input" accept="application/json" class="hidden">
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-5 py-6 space-y-6">
+
+  <!-- Mode selector -->
+  <div class="glass rounded-2xl p-1 inline-flex gap-1">
+    <button class="tab-btn active px-4 py-2 rounded-xl text-[12.5px] font-medium" data-mode="local">Local / Download Mode</button>
+    <button class="tab-btn px-4 py-2 rounded-xl text-[12.5px] font-medium" data-mode="github">GitHub Mode</button>
+  </div>
+
+  <!-- Local mode notice -->
+  <div id="local-notice" class="glass rounded-2xl p-4 text-[12px] text-[var(--ink-dim)] leading-relaxed">
+    Static HTML cannot securely write files on its own. In this mode, edit data below, then click
+    <b class="text-[var(--ink)]">Download JSON</b> to save an updated <code>data.json</code>, and manually
+    upload/commit it to your hosting (GitHub Pages, Vercel, etc.).
+  </div>
+
+  <!-- GitHub mode panel -->
+  <div id="github-panel" class="hidden glass rounded-2xl p-5 space-y-4">
+    <div class="glass-strong rounded-xl p-3.5 text-[11.5px] text-[var(--ink-dim)] leading-relaxed">
+      ⚠ Storing a GitHub Personal Access Token inside a public <code>admin.html</code> is insecure — anyone who
+      can load this page (or view its source / network requests) can read the token from memory. Only use this
+      mode locally, on a private device, or behind your own authentication. Never deploy this token-entry
+      workflow on a publicly reachable admin page. If you can't add secure server-side auth, prefer the
+      Local/Download workflow above and commit files to GitHub yourself.
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label>GitHub owner</label><input id="gh-owner" placeholder="username"></div>
+      <div><label>Repository</label><input id="gh-repo" placeholder="redwaist"></div>
+      <div><label>Branch</label><input id="gh-branch" placeholder="main" value="main"></div>
+      <div><label>File path</label><input id="gh-path" placeholder="data/data.json" value="data/data.json"></div>
+    </div>
+    <div>
+      <label>Personal Access Token (kept in memory only, never saved)</label>
+      <input id="gh-token" type="password" placeholder="ghp_...">
+    </div>
+    <div class="flex gap-2">
+      <button id="gh-fetch" class="btn-ghost">Fetch from GitHub</button>
+      <button id="gh-commit" class="btn-primary">Commit changes to GitHub</button>
+    </div>
+    <p id="gh-status" class="text-[11px] text-[var(--ink-dim)]"></p>
+  </div>
+
+  <!-- Section tabs -->
+  <div class="flex gap-2 flex-wrap">
+    <button class="section-tab tab-btn active px-4 py-2 rounded-xl text-[12.5px] font-medium glass" data-section="videos">Videos</button>
+    <button class="section-tab tab-btn px-4 py-2 rounded-xl text-[12.5px] font-medium glass" data-section="tasks">Tasks</button>
+    <button class="section-tab tab-btn px-4 py-2 rounded-xl text-[12.5px] font-medium glass" data-section="settings">Settings</button>
+    <button class="section-tab tab-btn px-4 py-2 rounded-xl text-[12.5px] font-medium glass" data-section="raw">Raw JSON</button>
+  </div>
+
+  <!-- Videos section -->
+  <section id="sec-videos" class="section space-y-3">
+    <div class="flex items-center justify-between">
+      <h2 class="font-display text-[15px]">Videos</h2>
+      <button id="add-video" class="btn-ghost">+ Add video</button>
+    </div>
+    <div id="videos-list" class="space-y-3"></div>
+  </section>
+
+  <!-- Tasks section -->
+  <section id="sec-tasks" class="section space-y-3 hidden">
+    <div class="flex items-center justify-between">
+      <h2 class="font-display text-[15px]">Tasks</h2>
+      <button id="add-task" class="btn-ghost">+ Add task</button>
+    </div>
+    <div id="tasks-list" class="space-y-3"></div>
+  </section>
+
+  <!-- Settings section -->
+  <section id="sec-settings" class="section space-y-3 hidden">
+    <h2 class="font-display text-[15px]">Settings</h2>
+    <div class="glass rounded-2xl p-5 grid grid-cols-2 gap-4" id="settings-form"></div>
+  </section>
+
+  <!-- Raw JSON -->
+  <section id="sec-raw" class="section space-y-3 hidden">
+    <div class="flex items-center justify-between">
+      <h2 class="font-display text-[15px]">Raw JSON</h2>
+      <button id="apply-raw" class="btn-primary">Apply</button>
+    </div>
+    <textarea id="raw-json" rows="24" class="font-mono text-[11.5px]"></textarea>
+    <p id="raw-error" class="text-[11px] text-[#ff8b98]"></p>
+  </section>
+
+</main>
+
+<div id="toast" class="toast fixed left-1/2 -translate-x-1/2 bottom-8 z-50 opacity-0 translate-y-3 pointer-events-none">
+  <div class="glass-strong rounded-2xl px-4 py-2.5 text-[12.5px]" id="toast-text"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  let DATA = {
+    settings:{ appName:"RedWaist", logo:"", theme:"dark-glass", accentColor:"#E8384F", featuredVideo:"", maintenanceMode:false, defaultRequiredTasks:3 },
+    videos:[], tasks:[]
+  };
+
+  function toast(msg){
+    const el = document.getElementById('toast');
+    document.getElementById('toast-text').textContent = msg;
+    el.classList.remove('opacity-0','translate-y-3');
+    clearTimeout(window.__t);
+    window.__t = setTimeout(()=> el.classList.add('opacity-0','translate-y-3'), 2200);
+  }
+  function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,8); }
+
+  /* ---------- Mode tabs ---------- */
+  document.querySelectorAll('[data-mode]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('[data-mode]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const mode = btn.dataset.mode;
+      document.getElementById('local-notice').classList.toggle('hidden', mode!=='local');
+      document.getElementById('github-panel').classList.toggle('hidden', mode!=='github');
+    });
+  });
+
+  /* ---------- Section tabs ---------- */
+  document.querySelectorAll('.section-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.section-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.section').forEach(s=>s.classList.add('hidden'));
+      document.getElementById('sec-'+btn.dataset.section).classList.remove('hidden');
+      if (btn.dataset.section === 'raw') syncRawFromData();
+    });
+  });
+
+  /* ---------- Videos ---------- */
+  function renderVideos(){
+    const wrap = document.getElementById('videos-list');
+    wrap.innerHTML = DATA.videos.map((v,i)=>`
+      <div class="glass rounded-2xl p-4 space-y-3" data-video-index="${i}">
+        <div class="flex items-center justify-between">
+          <p class="text-[12px] text-[var(--ink-dim)]">ID: ${v.id}</p>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1.5 text-[11px] text-[var(--ink-dim)]">
+              <input type="checkbox" class="v-status" ${v.status==='active'?'checked':''}> Active
+            </label>
+            <button class="btn-danger v-delete">Delete</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label>Title</label><input class="v-title" value="${escAttr(v.title)}"></div>
+          <div><label>Duration</label><input class="v-duration" value="${escAttr(v.duration)}" placeholder="08:32"></div>
+          <div class="col-span-2"><label>Description</label><textarea class="v-description" rows="2">${escHtml(v.description)}</textarea></div>
+          <div class="col-span-2"><label>Thumbnail URL</label><input class="v-thumbnail" value="${escAttr(v.thumbnail)}"></div>
+          <div class="col-span-2"><label>Video URL</label><input class="v-videoUrl" value="${escAttr(v.videoUrl)}"></div>
+          <div class="col-span-2"><label>Download URL</label><input class="v-downloadUrl" value="${escAttr(v.downloadUrl)}"></div>
+          <div><label>Required tasks</label><input type="number" min="0" class="v-requiredTasks" value="${v.requiredTasks||0}"></div>
+        </div>
+      </div>
+    `).join('') || `<p class="text-[12px] text-[var(--ink-dim)]">No videos yet. Click "+ Add video".</p>`;
+
+    wrap.querySelectorAll('[data-video-index]').forEach(row=>{
+      const i = +row.dataset.videoIndex;
+      const bind = (sel, key, isCheckbox, isNumber)=>{
+        const el = row.querySelector(sel);
+        el.addEventListener('input', ()=>{
+          DATA.videos[i][key] = isNumber ? (+el.value||0) : el.value;
+        });
+      };
+      bind('.v-title','title'); bind('.v-duration','duration'); bind('.v-description','description');
+      bind('.v-thumbnail','thumbnail'); bind('.v-videoUrl','videoUrl'); bind('.v-downloadUrl','downloadUrl');
+      bind('.v-requiredTasks','requiredTasks', false, true);
+      row.querySelector('.v-status').addEventListener('change', e=>{ DATA.videos[i].status = e.target.checked ? 'active' : 'disabled'; });
+      row.querySelector('.v-delete').addEventListener('click', ()=>{ DATA.videos.splice(i,1); renderVideos(); toast('Video deleted'); });
+    });
+  }
+  document.getElementById('add-video').addEventListener('click', ()=>{
+    DATA.videos.push({ id: uid('video'), title:'New video', description:'', thumbnail:'', videoUrl:'', downloadUrl:'', requiredTasks: DATA.settings.defaultRequiredTasks||3, duration:'00:00', status:'active' });
+    renderVideos();
+  });
+
+  /* ---------- Tasks ---------- */
+  function renderTasks(){
+    const wrap = document.getElementById('tasks-list');
+    wrap.innerHTML = DATA.tasks.map((t,i)=>`
+      <div class="glass rounded-2xl p-4 space-y-3" data-task-index="${i}">
+        <div class="flex items-center justify-between">
+          <p class="text-[12px] text-[var(--ink-dim)]">ID: ${t.id}</p>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1.5 text-[11px] text-[var(--ink-dim)]">
+              <input type="checkbox" class="t-status" ${t.status==='active'?'checked':''}> Active
+            </label>
+            <button class="btn-danger t-delete">Delete</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label>Title</label><input class="t-title" value="${escAttr(t.title)}"></div>
+          <div><label>Order</label><input type="number" class="t-order" value="${t.order||0}"></div>
+          <div class="col-span-2"><label>Thumbnail URL</label><input class="t-thumbnail" value="${escAttr(t.thumbnail)}"></div>
+          <div class="col-span-2"><label>Target / Ad URL</label><input class="t-targetUrl" value="${escAttr(t.targetUrl)}"></div>
+        </div>
+      </div>
+    `).join('') || `<p class="text-[12px] text-[var(--ink-dim)]">No tasks yet. Click "+ Add task".</p>`;
+
+    wrap.querySelectorAll('[data-task-index]').forEach(row=>{
+      const i = +row.dataset.taskIndex;
+      const bind = (sel, key, isNumber)=>{
+        const el = row.querySelector(sel);
+        el.addEventListener('input', ()=>{ DATA.tasks[i][key] = isNumber ? (+el.value||0) : el.value; });
+      };
+      bind('.t-title','title'); bind('.t-order','order', true);
+      bind('.t-thumbnail','thumbnail'); bind('.t-targetUrl','targetUrl');
+      row.querySelector('.t-status').addEventListener('change', e=>{ DATA.tasks[i].status = e.target.checked ? 'active' : 'disabled'; });
+      row.querySelector('.t-delete').addEventListener('click', ()=>{ DATA.tasks.splice(i,1); renderTasks(); toast('Task deleted'); });
+    });
+  }
+  document.getElementById('add-task').addEventListener('click', ()=>{
+    DATA.tasks.push({ id: uid('task'), title:'New task', thumbnail:'', targetUrl:'', status:'active', order: DATA.tasks.length+1 });
+    renderTasks();
+  });
+
+  /* ---------- Settings ---------- */
+  function renderSettings(){
+    const s = DATA.settings;
+    document.getElementById('settings-form').innerHTML = `
+      <div><label>App name</label><input id="s-appName" value="${escAttr(s.appName)}"></div>
+      <div><label>Logo URL</label><input id="s-logo" value="${escAttr(s.logo)}"></div>
+      <div><label>Theme</label><input id="s-theme" value="${escAttr(s.theme)}"></div>
+      <div><label>Accent color</label><input id="s-accentColor" type="text" value="${escAttr(s.accentColor)}"></div>
+      <div><label>Featured video ID</label><input id="s-featuredVideo" value="${escAttr(s.featuredVideo)}"></div>
+      <div><label>Default required task count</label><input id="s-defaultRequiredTasks" type="number" value="${s.defaultRequiredTasks||0}"></div>
+      <div class="col-span-2 flex items-center gap-2">
+        <input type="checkbox" id="s-maintenanceMode" ${s.maintenanceMode?'checked':''}>
+        <label class="!mb-0" for="s-maintenanceMode">Maintenance mode</label>
+      </div>
+    `;
+    const bindText = (id,key)=> document.getElementById(id).addEventListener('input', e=> DATA.settings[key]=e.target.value);
+    bindText('s-appName','appName'); bindText('s-logo','logo'); bindText('s-theme','theme');
+    bindText('s-accentColor','accentColor'); bindText('s-featuredVideo','featuredVideo');
+    document.getElementById('s-defaultRequiredTasks').addEventListener('input', e=> DATA.settings.defaultRequiredTasks = +e.target.value||0);
+    document.getElementById('s-maintenanceMode').addEventListener('change', e=> DATA.settings.maintenanceMode = e.target.checked);
+  }
+
+  /* ---------- Raw JSON ---------- */
+  function syncRawFromData(){ document.getElementById('raw-json').value = JSON.stringify(DATA, null, 2); }
+  document.getElementById('apply-raw').addEventListener('click', ()=>{
+    try{
+      const parsed = JSON.parse(document.getElementById('raw-json').value);
+      DATA = parsed;
+      document.getElementById('raw-error').textContent = '';
+      renderAll();
+      toast('Applied raw JSON');
+    }catch(e){
+      document.getElementById('raw-error').textContent = 'Invalid JSON: ' + e.message;
+    }
+  });
+
+  function renderAll(){ renderVideos(); renderTasks(); renderSettings(); syncRawFromData(); }
+
+  /* ---------- Escaping ---------- */
+  function escAttr(str){ return (str||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+  function escHtml(str){ return (str||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  /* ---------- Load / Download ---------- */
+  document.getElementById('btn-load-json').addEventListener('click', ()=> document.getElementById('file-input').click());
+  document.getElementById('file-input').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        DATA = JSON.parse(reader.result);
+        renderAll();
+        toast('Loaded ' + file.name);
+      }catch(err){ toast('Invalid JSON file'); }
+    };
+    reader.readAsText(file);
+  });
+  document.getElementById('btn-download-json').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'data.json';
+    a.click();
+    toast('Downloaded data.json');
+  });
+
+  /* ---------- GitHub mode ---------- */
+  function b64EncodeUnicode(str){
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+  function b64DecodeUnicode(str){
+    return decodeURIComponent(escape(atob(str)));
+  }
+  function ghConfig(){
+    return {
+      owner: document.getElementById('gh-owner').value.trim(),
+      repo: document.getElementById('gh-repo').value.trim(),
+      branch: document.getElementById('gh-branch').value.trim() || 'main',
+      path: document.getElementById('gh-path').value.trim() || 'data/data.json',
+      token: document.getElementById('gh-token').value.trim(),
+    };
+  }
+  document.getElementById('gh-fetch').addEventListener('click', async ()=>{
+    const c = ghConfig();
+    const status = document.getElementById('gh-status');
+    if(!c.owner || !c.repo || !c.token){ status.textContent = 'Owner, repo, and token are required.'; return; }
+    status.textContent = 'Fetching...';
+    try{
+      const res = await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}?ref=${c.branch}`, {
+        headers: { Authorization: `Bearer ${c.token}`, Accept: 'application/vnd.github+json' }
+      });
+      if(!res.ok) throw new Error('GitHub error ' + res.status);
+      const json = await res.json();
+      DATA = JSON.parse(b64DecodeUnicode(json.content.replace(/\n/g,'')));
+      window.__ghSha = json.sha;
+      renderAll();
+      status.textContent = 'Loaded from GitHub at ' + new Date().toLocaleTimeString();
+      toast('Loaded from GitHub');
+    }catch(err){
+      status.textContent = 'Fetch failed: ' + err.message;
+    }
+  });
+  document.getElementById('gh-commit').addEventListener('click', async ()=>{
+    const c = ghConfig();
+    const status = document.getElementById('gh-status');
+    if(!c.owner || !c.repo || !c.token){ status.textContent = 'Owner, repo, and token are required.'; return; }
+    status.textContent = 'Committing...';
+    try{
+      const body = {
+        message: 'Update RedWaist data via admin panel',
+        content: b64EncodeUnicode(JSON.stringify(DATA, null, 2)),
+        branch: c.branch,
+      };
+      if (window.__ghSha) body.sha = window.__ghSha;
+      const res = await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${c.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if(!res.ok){ const t = await res.text(); throw new Error('GitHub error ' + res.status + ': ' + t); }
+      const json = await res.json();
+      window.__ghSha = json.content.sha;
+      status.textContent = 'Committed at ' + new Date().toLocaleTimeString();
+      toast('Committed to GitHub');
+    }catch(err){
+      status.textContent = 'Commit failed: ' + err.message;
+    }
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+  </html>

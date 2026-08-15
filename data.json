@@ -6,7 +6,8 @@
     "accentColor": "#E8384F",
     "featuredVideo": "video_001",
     "maintenanceMode": false,
-    "defaultRequiredTasks": 3
+    "defaultRequiredTasks": 3,
+    "adZoneId": "11575831"
   },
   "videos": [
     {
@@ -14,8 +15,8 @@
       "title": "Ethical Hacking Part 1",
       "description": "Introduction to ethical hacking fundamentals, lab setup, and reconnaissance basics.",
       "thumbnail": "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&q=80",
-      "videoUrl": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/videos/video1.mp4",
-      "downloadUrl": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/videos/video1.mp4",
+      "videoUrl": "https://download1234.mediafire.com/abcd1234/video1.mp4",
+      "downloadUrl": "https://www.mediafire.com/file/abcd1234/video1.mp4/file",
       "requiredTasks": 3,
       "duration": "08:32",
       "status": "active"
@@ -25,8 +26,8 @@
       "title": "Ethical Hacking Part 2",
       "description": "Scanning, enumeration, and building your first vulnerability report.",
       "thumbnail": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&q=80",
-      "videoUrl": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/videos/video2.mp4",
-      "downloadUrl": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/videos/video2.mp4",
+      "videoUrl": "https://download1234.mediafire.com/efgh5678/video2.mp4",
+      "downloadUrl": "https://www.mediafire.com/file/efgh5678/video2.mp4/file",
       "requiredTasks": 2,
       "duration": "11:47",
       "status": "active"
@@ -36,8 +37,8 @@
       "title": "Network Defense Basics",
       "description": "Firewalls, segmentation, and monitoring for small networks.",
       "thumbnail": "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=800&q=80",
-      "videoUrl": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/videos/video3.mp4",
-      "downloadUrl": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/videos/video3.mp4",
+      "videoUrl": "https://download1234.mediafire.com/ijkl9012/video3.mp4",
+      "downloadUrl": "https://www.mediafire.com/file/ijkl9012/video3.mp4/file",
       "requiredTasks": 1,
       "duration": "06:15",
       "status": "active"
@@ -46,25 +47,28 @@
   "tasks": [
     {
       "id": "task_001",
-      "title": "Visit Sponsor Page",
-      "thumbnail": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&q=80",
-      "targetUrl": "https://example.com/ad",
+      "type": "channel",
+      "title": "Join Main Channel",
+      "thumbnail": "https://images.unsplash.com/photo-1611262588024-d12430b98920?w=410&h=245&q=80&fit=crop",
+      "targetUrl": "https://t.me/example_channel",
       "status": "active",
       "order": 1
     },
     {
       "id": "task_002",
+      "type": "channel",
       "title": "Join Partner Channel",
-      "thumbnail": "https://images.unsplash.com/photo-1611262588024-d12430b98920?w=400&q=80",
-      "targetUrl": "https://t.me/example_channel",
+      "thumbnail": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=410&h=245&q=80&fit=crop",
+      "targetUrl": "https://t.me/example_partner_channel",
       "status": "active",
       "order": 2
     },
     {
       "id": "task_003",
+      "type": "ad",
       "title": "Watch Advertisement",
-      "thumbnail": "https://images.unsplash.com/photo-1626785774573-4b799315345d?w=400&q=80",
-      "targetUrl": "https://example.com/ad2",
+      "thumbnail": "https://images.unsplash.com/photo-1626785774573-4b799315345d?w=410&h=245&q=80&fit=crop",
+      "targetUrl": "",
       "status": "active",
       "order": 3
     }

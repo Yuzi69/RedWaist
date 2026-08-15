@@ -28,6 +28,8 @@
   .btn-danger{ background:rgba(232,56,79,0.12); border:1px solid rgba(232,56,79,0.35); color:#ff8b98; border-radius:10px; padding:7px 12px; font-size:12px; }
   .tab-btn.active{ background:var(--glass-strong); color:white; }
   .tab-btn{ color:var(--ink-dim); }
+  .thumb-preview{ aspect-ratio: 410 / 245; }
+  .rotate-180{ transform: rotate(180deg); }
   ::-webkit-scrollbar{ width:8px; } ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.1); border-radius:8px; }
   .toast{ transition: transform .3s ease, opacity .3s ease; }
 </style>
@@ -147,7 +149,7 @@
   "use strict";
 
   let DATA = {
-    settings:{ appName:"RedWaist", logo:"", theme:"dark-glass", accentColor:"#E8384F", featuredVideo:"", maintenanceMode:false, defaultRequiredTasks:3 },
+    settings:{ appName:"RedWaist", logo:"", theme:"dark-glass", accentColor:"#E8384F", featuredVideo:"", maintenanceMode:false, defaultRequiredTasks:3, adZoneId:"" },
     videos:[], tasks:[]
   };
 
@@ -183,6 +185,13 @@
   });
 
   /* ---------- Videos ---------- */
+  function thumbPreview(url, cls){
+    const safe = escAttr(url);
+    return `<div class="thumb-preview ${cls||''} rounded-xl overflow-hidden bg-white/[0.03] border border-white/10 flex items-center justify-center flex-shrink-0">
+      ${url ? `<img src="${safe}" class="w-full h-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+      <span class="thumb-empty text-[9.5px] text-[var(--ink-dim)] text-center px-1" style="${url?'display:none':'display:flex'}">410×245</span>
+    </div>`;
+  }
   function renderVideos(){
     const wrap = document.getElementById('videos-list');
     wrap.innerHTML = DATA.videos.map((v,i)=>`
@@ -196,42 +205,70 @@
             <button class="btn-danger v-delete">Delete</button>
           </div>
         </div>
+
+        <div class="flex gap-3">
+          ${thumbPreview(v.thumbnail, 'v-thumb-preview w-24 h-[58px]')}
+          <div class="flex-1 space-y-2">
+            <div><label>Title</label><input class="v-title" value="${escAttr(v.title)}" placeholder="e.g. Ethical Hacking Part 1"></div>
+            <div><label>Thumbnail URL <span class="opacity-60">(recommended 410×245)</span></label><input class="v-thumbnail" value="${escAttr(v.thumbnail)}" placeholder="https://..."></div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-2 gap-3">
-          <div><label>Title</label><input class="v-title" value="${escAttr(v.title)}"></div>
-          <div><label>Duration</label><input class="v-duration" value="${escAttr(v.duration)}" placeholder="08:32"></div>
-          <div class="col-span-2"><label>Description</label><textarea class="v-description" rows="2">${escHtml(v.description)}</textarea></div>
-          <div class="col-span-2"><label>Thumbnail URL</label><input class="v-thumbnail" value="${escAttr(v.thumbnail)}"></div>
-          <div class="col-span-2"><label>Video URL</label><input class="v-videoUrl" value="${escAttr(v.videoUrl)}"></div>
-          <div class="col-span-2"><label>Download URL</label><input class="v-downloadUrl" value="${escAttr(v.downloadUrl)}"></div>
+          <div class="col-span-2"><label>Video URL</label><input class="v-videoUrl" value="${escAttr(v.videoUrl)}" placeholder="https://.../video.mp4"></div>
           <div><label>Required tasks</label><input type="number" min="0" class="v-requiredTasks" value="${v.requiredTasks||0}"></div>
+          <div><label>Duration</label><input class="v-duration" value="${escAttr(v.duration)}" placeholder="08:32"></div>
+        </div>
+
+        <button class="v-toggle-advanced text-[11px] text-[var(--ink-dim)] flex items-center gap-1">
+          <svg class="v-chevron transition-transform" width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          More options
+        </button>
+        <div class="v-advanced hidden space-y-3 pt-1">
+          <div><label>Description</label><textarea class="v-description" rows="2">${escHtml(v.description)}</textarea></div>
+          <div><label>Download URL <span class="opacity-60">(defaults to Video URL if left blank)</span></label><input class="v-downloadUrl" value="${escAttr(v.downloadUrl)}"></div>
         </div>
       </div>
-    `).join('') || `<p class="text-[12px] text-[var(--ink-dim)]">No videos yet. Click "+ Add video".</p>`;
+    `).join('') || `<p class="text-[12px] text-[var(--ink-dim)]">No videos yet. Click "+ Add video" to create your first one — you only need a title, thumbnail, and video URL to start.</p>`;
 
     wrap.querySelectorAll('[data-video-index]').forEach(row=>{
       const i = +row.dataset.videoIndex;
-      const bind = (sel, key, isCheckbox, isNumber)=>{
+      const bind = (sel, key, isNumber)=>{
         const el = row.querySelector(sel);
         el.addEventListener('input', ()=>{
           DATA.videos[i][key] = isNumber ? (+el.value||0) : el.value;
+          if (key === 'thumbnail') refreshThumbPreview(row.querySelector('.v-thumb-preview'), el.value);
         });
       };
       bind('.v-title','title'); bind('.v-duration','duration'); bind('.v-description','description');
       bind('.v-thumbnail','thumbnail'); bind('.v-videoUrl','videoUrl'); bind('.v-downloadUrl','downloadUrl');
-      bind('.v-requiredTasks','requiredTasks', false, true);
+      bind('.v-requiredTasks','requiredTasks', true);
       row.querySelector('.v-status').addEventListener('change', e=>{ DATA.videos[i].status = e.target.checked ? 'active' : 'disabled'; });
       row.querySelector('.v-delete').addEventListener('click', ()=>{ DATA.videos.splice(i,1); renderVideos(); toast('Video deleted'); });
+      row.querySelector('.v-toggle-advanced').addEventListener('click', ()=>{
+        row.querySelector('.v-advanced').classList.toggle('hidden');
+        row.querySelector('.v-chevron').classList.toggle('rotate-180');
+      });
     });
+  }
+  function refreshThumbPreview(container, url){
+    if (!container) return;
+    container.innerHTML = url
+      ? `<img src="${escAttr(url)}" class="w-full h-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="thumb-empty text-[9.5px] text-[var(--ink-dim)] text-center px-1" style="display:none">410×245</span>`
+      : `<span class="thumb-empty text-[9.5px] text-[var(--ink-dim)] text-center px-1">410×245</span>`;
   }
   document.getElementById('add-video').addEventListener('click', ()=>{
     DATA.videos.push({ id: uid('video'), title:'New video', description:'', thumbnail:'', videoUrl:'', downloadUrl:'', requiredTasks: DATA.settings.defaultRequiredTasks||3, duration:'00:00', status:'active' });
     renderVideos();
+    toast('Video added — fill in title, thumbnail, and video URL');
   });
 
   /* ---------- Tasks ---------- */
   function renderTasks(){
     const wrap = document.getElementById('tasks-list');
-    wrap.innerHTML = DATA.tasks.map((t,i)=>`
+    wrap.innerHTML = DATA.tasks.map((t,i)=>{
+      const type = t.type === 'ad' ? 'ad' : 'channel';
+      return `
       <div class="glass rounded-2xl p-4 space-y-3" data-task-index="${i}">
         <div class="flex items-center justify-between">
           <p class="text-[12px] text-[var(--ink-dim)]">ID: ${t.id}</p>
@@ -242,30 +279,57 @@
             <button class="btn-danger t-delete">Delete</button>
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div><label>Title</label><input class="t-title" value="${escAttr(t.title)}"></div>
-          <div><label>Order</label><input type="number" class="t-order" value="${t.order||0}"></div>
-          <div class="col-span-2"><label>Thumbnail URL</label><input class="t-thumbnail" value="${escAttr(t.thumbnail)}"></div>
-          <div class="col-span-2"><label>Target / Ad URL</label><input class="t-targetUrl" value="${escAttr(t.targetUrl)}"></div>
+
+        <div class="flex gap-1.5">
+          <button class="t-type-btn flex-1 py-2 rounded-xl text-[12px] font-medium ${type==='channel'?'btn-primary':'btn-ghost'}" data-type="channel">Join channel</button>
+          <button class="t-type-btn flex-1 py-2 rounded-xl text-[12px] font-medium ${type==='ad'?'btn-primary':'btn-ghost'}" data-type="ad">Watch ad</button>
         </div>
-      </div>
-    `).join('') || `<p class="text-[12px] text-[var(--ink-dim)]">No tasks yet. Click "+ Add task".</p>`;
+
+        <div class="flex gap-3">
+          ${thumbPreview(t.thumbnail, 't-thumb-preview w-24 h-[58px]')}
+          <div class="flex-1 space-y-2">
+            <div><label>Title</label><input class="t-title" value="${escAttr(t.title)}" placeholder="e.g. Join Main Channel"></div>
+            <div><label>Thumbnail URL <span class="opacity-60">(recommended 410×245)</span></label><input class="t-thumbnail" value="${escAttr(t.thumbnail)}" placeholder="https://..."></div>
+          </div>
+        </div>
+
+        <div class="t-channel-field ${type==='ad'?'hidden':''}">
+          <label>Channel link</label><input class="t-targetUrl" value="${escAttr(t.targetUrl)}" placeholder="https://t.me/yourchannel">
+        </div>
+        <div class="t-ad-field ${type==='ad'?'':'hidden'} glass-strong rounded-xl p-3 text-[11px] text-[var(--ink-dim)] leading-relaxed">
+          Uses the Ad Zone ID from the Settings tab — no per-task URL needed. The task only marks complete once the ad actually finishes playing.
+        </div>
+
+        <div><label>Order</label><input type="number" class="t-order" value="${t.order||0}" style="width:80px"></div>
+      </div>`;
+    }).join('') || `<p class="text-[12px] text-[var(--ink-dim)]">No tasks yet. Click "+ Add task" to create your first one.</p>`;
 
     wrap.querySelectorAll('[data-task-index]').forEach(row=>{
       const i = +row.dataset.taskIndex;
       const bind = (sel, key, isNumber)=>{
         const el = row.querySelector(sel);
-        el.addEventListener('input', ()=>{ DATA.tasks[i][key] = isNumber ? (+el.value||0) : el.value; });
+        el.addEventListener('input', ()=>{
+          DATA.tasks[i][key] = isNumber ? (+el.value||0) : el.value;
+          if (key === 'thumbnail') refreshThumbPreview(row.querySelector('.t-thumb-preview'), el.value);
+        });
       };
       bind('.t-title','title'); bind('.t-order','order', true);
       bind('.t-thumbnail','thumbnail'); bind('.t-targetUrl','targetUrl');
       row.querySelector('.t-status').addEventListener('change', e=>{ DATA.tasks[i].status = e.target.checked ? 'active' : 'disabled'; });
       row.querySelector('.t-delete').addEventListener('click', ()=>{ DATA.tasks.splice(i,1); renderTasks(); toast('Task deleted'); });
+      row.querySelectorAll('.t-type-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          DATA.tasks[i].type = btn.dataset.type;
+          if (btn.dataset.type === 'ad') DATA.tasks[i].targetUrl = '';
+          renderTasks();
+        });
+      });
     });
   }
   document.getElementById('add-task').addEventListener('click', ()=>{
-    DATA.tasks.push({ id: uid('task'), title:'New task', thumbnail:'', targetUrl:'', status:'active', order: DATA.tasks.length+1 });
+    DATA.tasks.push({ id: uid('task'), type:'channel', title:'New task', thumbnail:'', targetUrl:'', status:'active', order: DATA.tasks.length+1 });
     renderTasks();
+    toast('Task added — pick a type, then fill in the details');
   });
 
   /* ---------- Settings ---------- */
@@ -278,6 +342,11 @@
       <div><label>Accent color</label><input id="s-accentColor" type="text" value="${escAttr(s.accentColor)}"></div>
       <div><label>Featured video ID</label><input id="s-featuredVideo" value="${escAttr(s.featuredVideo)}"></div>
       <div><label>Default required task count</label><input id="s-defaultRequiredTasks" type="number" value="${s.defaultRequiredTasks||0}"></div>
+      <div class="col-span-2">
+        <label>Ad Zone ID (Monetag) — used by all "Watch ad" tasks</label>
+        <input id="s-adZoneId" value="${escAttr(s.adZoneId)}" placeholder="e.g. 11575831">
+        <p class="text-[10.5px] text-[var(--ink-dim)] mt-1.5 leading-relaxed">Get this from your Monetag dashboard. index.html loads the SDK script for this zone automatically — no code edits needed when you change it here.</p>
+      </div>
       <div class="col-span-2 flex items-center gap-2">
         <input type="checkbox" id="s-maintenanceMode" ${s.maintenanceMode?'checked':''}>
         <label class="!mb-0" for="s-maintenanceMode">Maintenance mode</label>
@@ -286,6 +355,7 @@
     const bindText = (id,key)=> document.getElementById(id).addEventListener('input', e=> DATA.settings[key]=e.target.value);
     bindText('s-appName','appName'); bindText('s-logo','logo'); bindText('s-theme','theme');
     bindText('s-accentColor','accentColor'); bindText('s-featuredVideo','featuredVideo');
+    bindText('s-adZoneId','adZoneId');
     document.getElementById('s-defaultRequiredTasks').addEventListener('input', e=> DATA.settings.defaultRequiredTasks = +e.target.value||0);
     document.getElementById('s-maintenanceMode').addEventListener('change', e=> DATA.settings.maintenanceMode = e.target.checked);
   }
@@ -401,4 +471,4 @@
 })();
 </script>
 </body>
-  </html>
+      </html>

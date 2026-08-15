@@ -207,7 +207,7 @@
         </div>
 
         <div class="grid grid-cols-2 gap-3">
-          <div class="col-span-2"><label>Video URL</label><input class="v-videoUrl" value="${escAttr(v.videoUrl)}" placeholder="https://.../video.mp4"></div>
+          <div class="col-span-2"><label>Video URL <span class="opacity-60">(Mediafire direct link)</span></label><input class="v-videoUrl" value="${escAttr(v.videoUrl)}" placeholder="https://download####.mediafire.com/..."></div>
           <div><label>Required tasks</label><input type="number" min="0" class="v-requiredTasks" value="${v.requiredTasks||0}"></div>
           <div><label>Duration</label><input class="v-duration" value="${escAttr(v.duration)}" placeholder="08:32"></div>
         </div>
@@ -218,7 +218,7 @@
         </button>
         <div class="v-advanced hidden space-y-3 pt-1">
           <div><label>Description</label><textarea class="v-description" rows="2">${escHtml(v.description)}</textarea></div>
-          <div><label>Download URL <span class="opacity-60">(defaults to Video URL if left blank)</span></label><input class="v-downloadUrl" value="${escAttr(v.downloadUrl)}"></div>
+          <div><label>Download URL <span class="opacity-60">(Mediafire file page — defaults to Video URL if blank)</span></label><input class="v-downloadUrl" value="${escAttr(v.downloadUrl)}" placeholder="https://www.mediafire.com/file/.../file"></div>
         </div>
       </div>
     `).join('') || `<p class="text-[12px] text-[var(--ink-dim)]">No videos yet. Click "+ Add video" to create your first one — you only need a title, thumbnail, and video URL to start.</p>`;
@@ -542,4 +542,4 @@
 })();
 </script>
 </body>
-      </html>
+        </html>

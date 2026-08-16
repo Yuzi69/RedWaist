@@ -234,13 +234,37 @@
   /* ---------- Data loading ---------- */
   async function loadData(){
     try{
-      const res = await fetch('data/data.json', { cache: 'no-store' });
-      DATA = await res.json();
+      const bust = 't=' + Date.now();
+      const res = await fetch('data/data.json?' + bust, { cache: 'no-store' });
+      if (!res.ok) throw new Error('data.json returned HTTP ' + res.status + ' — check the file exists at data/data.json in your deployed site');
+      const text = await res.text();
+      try{
+        DATA = JSON.parse(text);
+      }catch(parseErr){
+        throw new Error('data.json has invalid JSON syntax: ' + parseErr.message + ' — check for a missing comma, bracket, or quote from your last edit');
+      }
+      hideDataError();
     }catch(e){
       DATA = { settings:{appName:"RedWaist", accentColor:"#E8384F", defaultRequiredTasks:3}, videos:[], tasks:[] };
+      showDataError(e.message);
     }
     applySettings();
     renderAll();
+  }
+
+  function showDataError(msg){
+    let banner = document.getElementById('data-error-banner');
+    if (!banner){
+      banner = document.createElement('div');
+      banner.id = 'data-error-banner';
+      banner.className = 'fixed top-0 left-0 right-0 z-[60] bg-[#8C1129] text-white text-[11.5px] px-4 py-3 leading-snug';
+      document.body.prepend(banner);
+    }
+    banner.textContent = '⚠ Couldn\'t load content: ' + msg;
+  }
+  function hideDataError(){
+    const banner = document.getElementById('data-error-banner');
+    if (banner) banner.remove();
   }
 
   function applySettings(){
@@ -609,4 +633,4 @@
 })();
 </script>
 </body>
-      </html>
+        </html>

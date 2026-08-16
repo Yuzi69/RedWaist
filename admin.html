@@ -44,15 +44,17 @@
       </div>
       <div class="min-w-0">
         <p class="font-display text-[14px]">RedWaist Admin</p>
-        <p class="text-[10.5px] text-[var(--ink-dim)] truncate" id="conn-status">Edit below, then Save downloads data.json</p>
+        <p class="text-[10.5px] text-[var(--ink-dim)] truncate" id="conn-status">Set up repo path once, then Publish</p>
       </div>
     </div>
     <div class="flex items-center gap-2 flex-shrink-0">
-      <button id="btn-save" class="btn-primary">Save</button>
+      <button id="btn-publish" class="btn-primary">Publish</button>
       <div class="relative">
         <button id="btn-more" class="btn-ghost px-3">⋯</button>
         <div id="more-menu" class="hidden absolute right-0 mt-2 w-52 glass-strong rounded-xl p-1.5 space-y-0.5 z-40">
+          <button id="btn-open-repo-settings" class="w-full text-left px-3 py-2 rounded-lg text-[12px]">Repo path settings…</button>
           <button id="btn-load-json" class="w-full text-left px-3 py-2 rounded-lg text-[12px]">Load JSON from file</button>
+          <button id="btn-download-json" class="w-full text-left px-3 py-2 rounded-lg text-[12px]">Download backup</button>
         </div>
       </div>
     </div>
@@ -60,12 +62,46 @@
   </div>
 </header>
 
+<!-- Repo settings modal -->
+<div id="repo-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-5">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="repo-backdrop"></div>
+  <div class="relative w-full max-w-md glass-strong rounded-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+    <h3 class="font-display text-[15px]">Repo path settings</h3>
+    <p class="text-[12px] text-[var(--ink-dim)] leading-relaxed">
+      No token needed here — this just builds a link to GitHub's own editor for your file. Set this once;
+      it's remembered on this device.
+    </p>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label>GitHub owner</label><input id="repo-owner" placeholder="username"></div>
+      <div><label>Repository</label><input id="repo-repo" placeholder="redwaist"></div>
+      <div><label>Branch</label><input id="repo-branch" placeholder="main" value="main"></div>
+      <div><label>File path</label><input id="repo-path" placeholder="data/data.json" value="data/data.json"></div>
+    </div>
+    <div class="flex gap-2">
+      <button id="btn-cancel-repo" class="btn-ghost flex-1">Cancel</button>
+      <button id="btn-save-repo" class="btn-primary flex-1">Save settings</button>
+    </div>
+    <p id="repo-status" class="text-[11px] text-[#ff8b98]"></p>
+  </div>
+</div>
+
+<!-- Publish steps modal -->
+<div id="publish-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-5">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+  <div class="relative w-full max-w-md glass-strong rounded-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+    <h3 class="font-display text-[15px]">Finish publishing</h3>
+    <div id="publish-steps-body"></div>
+    <button id="btn-close-publish" class="btn-primary w-full">Got it</button>
+  </div>
+</div>
+
 <main class="max-w-5xl mx-auto px-5 py-6 space-y-6">
 
   <div class="glass rounded-2xl p-4 text-[12px] text-[var(--ink-dim)] leading-relaxed">
-    Static HTML can't write files on its own, so <b class="text-[var(--ink)]">Save</b> downloads an updated
-    <code>data.json</code> to your device. Upload/replace that file in your GitHub repo (or drag it into
-    GitHub's web UI) to publish the change — your host redeploys automatically, usually within a minute.
+    Static HTML can't write files on its own — but <b class="text-[var(--ink)]">Publish</b> gets you as close as
+    possible: it copies the updated JSON to your clipboard and opens GitHub's own editor for
+    <code>data.json</code> in a new tab. Just tap in the editor, select-all, paste, and commit. Your host
+    redeploys automatically, usually within a minute.
   </div>
 
   <!-- Section tabs -->
@@ -364,6 +400,11 @@
     a.download = 'data.json';
     a.click();
   }
+  document.getElementById('btn-download-json').addEventListener('click', ()=>{
+    closeMoreMenu();
+    downloadJson();
+    toast('Downloaded data.json');
+  });
 
   /* ---------- ⋯ menu ---------- */
   function closeMoreMenu(){ document.getElementById('more-menu').classList.add('hidden'); }
@@ -375,15 +416,103 @@
     if (!e.target.closest('#more-menu') && !e.target.closest('#btn-more')) closeMoreMenu();
   });
 
-  /* ---------- Save (downloads updated data.json) ---------- */
-  document.getElementById('btn-save').addEventListener('click', ()=>{
-    downloadJson();
-    document.getElementById('conn-status').textContent = 'Saved data.json at ' + new Date().toLocaleTimeString() + ' — now upload it to your repo';
-    toast('Downloaded data.json — upload it to your host to publish');
+  /* ---------- Repo path settings (no token — just builds a GitHub editor URL) ---------- */
+  const REPO_CFG_KEY = 'redwaist_admin_repo_cfg';
+  let repoCfg = { owner:'', repo:'', branch:'main', path:'data/data.json' };
+
+  function loadRepoCfg(){
+    try{
+      const cfg = JSON.parse(localStorage.getItem(REPO_CFG_KEY) || 'null');
+      if (cfg) Object.assign(repoCfg, cfg);
+    }catch(e){}
+  }
+  function repoConfigured(){ return !!(repoCfg.owner && repoCfg.repo); }
+  function updateConnStatus(){
+    document.getElementById('conn-status').textContent = repoConfigured()
+      ? `Publishing to ${repoCfg.owner}/${repoCfg.repo} · ${repoCfg.path}`
+      : 'Set up repo path once, then Publish';
+  }
+
+  function openRepoModal(){
+    closeMoreMenu();
+    document.getElementById('repo-owner').value = repoCfg.owner;
+    document.getElementById('repo-repo').value = repoCfg.repo;
+    document.getElementById('repo-branch').value = repoCfg.branch || 'main';
+    document.getElementById('repo-path').value = repoCfg.path || 'data/data.json';
+    document.getElementById('repo-status').textContent = '';
+    const modal = document.getElementById('repo-modal');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+  }
+  function closeRepoModal(){
+    const modal = document.getElementById('repo-modal');
+    modal.classList.add('hidden'); modal.classList.remove('flex');
+  }
+  document.getElementById('btn-open-repo-settings').addEventListener('click', openRepoModal);
+  document.getElementById('btn-cancel-repo').addEventListener('click', closeRepoModal);
+  document.getElementById('repo-backdrop').addEventListener('click', closeRepoModal);
+  document.getElementById('btn-save-repo').addEventListener('click', ()=>{
+    const owner = document.getElementById('repo-owner').value.trim();
+    const repo = document.getElementById('repo-repo').value.trim();
+    const status = document.getElementById('repo-status');
+    if(!owner || !repo){ status.textContent = 'Owner and repository are required.'; return; }
+    repoCfg = {
+      owner, repo,
+      branch: document.getElementById('repo-branch').value.trim() || 'main',
+      path: document.getElementById('repo-path').value.trim() || 'data/data.json',
+    };
+    localStorage.setItem(REPO_CFG_KEY, JSON.stringify(repoCfg));
+    updateConnStatus();
+    closeRepoModal();
+    toast('Repo path saved on this device');
   });
 
+  /* ---------- Publish: copy JSON + open GitHub's editor for the file ---------- */
+  async function copyJsonToClipboard(){
+    const text = JSON.stringify(DATA, null, 2);
+    try{
+      await navigator.clipboard.writeText(text);
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function openPublishSteps(copied){
+    const modal = document.getElementById('publish-modal');
+    document.getElementById('publish-steps-body').innerHTML = copied ? `
+      <ol class="space-y-3 text-[13px] leading-relaxed list-decimal list-inside">
+        <li>Switch to the new tab that just opened (GitHub's editor for <code>data.json</code>).</li>
+        <li>Tap inside the code area, then <b>select ALL existing text</b> — long-press → "Select all" (don't
+          just place your cursor and paste, or you'll get old + new content mixed together, which breaks the
+          file).</li>
+        <li>Paste — the JSON is already on your clipboard.</li>
+        <li>Scroll down, add a short commit message if you like, then tap <b>Commit changes</b>.</li>
+        <li>Wait about a minute, then open your app and hard-refresh to confirm the new video/task shows up.</li>
+      </ol>` : `
+      <p class="text-[13px] leading-relaxed">Clipboard access was blocked, so <b>data.json</b> downloaded to
+      your device instead. In the new GitHub tab: tap the file, use the edit (pencil) icon, select all existing
+      text and delete it, then use "Upload files" or paste the downloaded file's contents in, and commit.</p>`;
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+  }
+  document.getElementById('btn-close-publish').addEventListener('click', ()=>{
+    document.getElementById('publish-modal').classList.add('hidden');
+    document.getElementById('publish-modal').classList.remove('flex');
+  });
+
+  document.getElementById('btn-publish').addEventListener('click', async ()=>{
+    if (!repoConfigured()){ openRepoModal(); return; }
+    const copied = await copyJsonToClipboard();
+    const editUrl = `https://github.com/${repoCfg.owner}/${repoCfg.repo}/edit/${repoCfg.branch}/${repoCfg.path}`;
+    window.open(editUrl, '_blank');
+    if (!copied) downloadJson();
+    openPublishSteps(copied);
+  });
+
+  /* ---------- Init ---------- */
+  loadRepoCfg();
+  updateConnStatus();
   renderAll();
 })();
 </script>
 </body>
-    </html>
+      </html>
